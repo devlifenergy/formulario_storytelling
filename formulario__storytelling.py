@@ -1,4 +1,4 @@
-# app_storytelling.py
+# app_storytelling_v2.py
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -13,7 +13,7 @@ COLOR_TEXT_DARK = "#333333"
 COLOR_BACKGROUND = "#FFFFFF"
 
 st.set_page_config(
-    page_title="Formulário 3 - Storytelling Profissional",
+    page_title="Formulário 3 - Storytelling",
     layout="wide"
 )
 
@@ -71,9 +71,9 @@ def connect_to_gsheet():
         
         gc = gspread.service_account_from_dict(creds_dict)
         
-        # Conecta na planilha 'formularios_pessoais' e na aba 'storytelling_profissional'
+        # Conecta na planilha 'formularios_pessoais' e na aba 'storytelling'
         spreadsheet = gc.open("formularios_pessoais") 
-        return spreadsheet.worksheet("storytelling_profissional") 
+        return spreadsheet.worksheet("storytelling") 
     except Exception as e:
         st.error(f"Erro ao conectar com o Google Sheets: {e}")
         return None
@@ -81,7 +81,7 @@ def connect_to_gsheet():
 ws_respostas = connect_to_gsheet()
 
 if ws_respostas is None:
-    st.error("Não foi possível conectar à aba 'storytelling_profissional' da planilha 'formularios_pessoais'.")
+    st.error("Não foi possível conectar à aba 'storytelling' da planilha 'formularios_pessoais'.")
     st.stop()
 
 # --- CABEÇALHO DA APLICAÇÃO ---
@@ -94,7 +94,7 @@ with col1:
 with col2:
     st.markdown(f"""
     <div style="display: flex; align-items: center; height: 100%;">
-        <h1 style='color: {COLOR_TEXT_DARK}; margin: 0; padding: 0;'>FORMULÁRIO 3 - STORYTELLING PROFISSIONAL</h1>
+        <h1 style='color: {COLOR_TEXT_DARK}; margin: 0; padding: 0;'>FORMULÁRIO 3 - STORYTELLING</h1>
     </div>
     """, unsafe_allow_html=True)
 
@@ -160,22 +160,34 @@ if not link_valido:
 
 # --- INSTRUÇÕES ---
 with st.expander("Ver Orientações aos Respondentes", expanded=True):
-    st.info("Descreva abaixo sua trajetória profissional, focando nos pontos de virada, influências e aprendizados.")
+    st.info("Registre abaixo um marco, escolha ou aprendizado importante da sua trajetória, detalhando o que aconteceu e como você se sentiu.")
 
 # --- FORMULÁRIO STORYTELLING ---
-st.subheader("Sua Narrativa")
+st.subheader("Registro do Evento")
 
 with st.container(border=True):
-    storytelling_texto = st.text_area(
-        label="Descreva os marcos da sua trajetória, escolhas, influências e aprendizados que moldaram sua atuação profissional.",
-        height=300, # Aproximadamente 10 a 12 linhas visuais
-        key="input_storytelling"
+    col_data_tipo = st.columns(2)
+    with col_data_tipo[0]:
+        data_fato = st.date_input("Data do Fato/Evento:", datetime.now())
+    with col_data_tipo[1]:
+        tipo_fato = st.text_input("Tipo (ex: Marco Profissional, Aprendizado, Desafio):")
+        
+    descricao = st.text_area(
+        label="Descrição (O que aconteceu?):",
+        height=150,
+        key="input_descricao"
+    )
+    
+    obs_sentimento = st.text_area(
+        label="Observações e Sentimentos (Como isso impactou você?):",
+        height=100,
+        key="input_obs"
     )
 
 # --- BOTÃO DE FINALIZAR E ENVIAR ---
 if st.button("Finalizar e Enviar Respostas", type="primary"):
-    if not storytelling_texto:
-        st.warning("Por favor, preencha o campo de texto antes de enviar.")
+    if not descricao:
+        st.warning("Por favor, preencha pelo menos a descrição do evento.")
     else:
         st.subheader("Enviando Respostas...")
         
@@ -187,23 +199,25 @@ if st.button("Finalizar e Enviar Respostas", type="primary"):
                 nome_limpo = org_coletora_valida.strip().upper()
                 id_organizacao = hashlib.md5(nome_limpo.encode('utf-8')).hexdigest()[:8].upper()
                 
-                # Monta a linha de dados
+                # Monta a linha de dados na ordem solicitada
                 dados_envio = [
-                    timestamp_str,
-                    id_organizacao,
-                    org_coletora_valida,
-                    nome_completo,
-                    data_nascimento.strftime('%d/%m/%Y'),
-                    contato,
-                    area_empresa,
-                    funcao_cargo,
-                    storytelling_texto
+                    timestamp_str,                          # Timestamp
+                    id_organizacao,                         # ID_FORMULARIO
+                    nome_completo,                          # NOME_COMPLETO
+                    data_nascimento.strftime('%d/%m/%Y'),   # DATA_NASC
+                    contato,                                # CONTATO
+                    area_empresa,                           # AREA_EMPRESA
+                    funcao_cargo,                           # FUNCAO
+                    data_fato.strftime('%d/%m/%Y'),         # DATA
+                    tipo_fato,                              # TIPO
+                    descricao,                              # DESCRICAO
+                    obs_sentimento                          # OBS_SENTIMENTO
                 ]
 
                 # Envia para o Google Sheets
                 ws_respostas.append_row(dados_envio, value_input_option='USER_ENTERED')
                 
-                st.success("História enviada com sucesso!")
+                st.success("Registro enviado com sucesso!")
                 st.balloons()
                 
             except Exception as e:
